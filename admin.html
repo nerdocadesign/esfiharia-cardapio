@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Administração Esfiharia Delivery</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1 class="titulo">Administração Esfiharia Delivery</h1>
+
+    <h2>Editar Informações do Header</h2>
+    <div class="input-container">
+      <input type="text" id="inputNomeEsfiharia" class="input-field" placeholder="Nome da Esfiharia">
+      <input type="text" id="inputImagemHeader" class="input-field" placeholder="URL da imagem do header">
+      <button class="btn-adicionar-categoria" onclick="salvarHeader()">Salvar Header</button>
+    </div>
+
+    <div>
+      <h2>Gerenciar Categorias</h2>
+      <div class="input-container">
+        <input type="text" id="inputCategoria" class="input-field" placeholder="Adicionar nova categoria">
+        <button class="btn btn-adicionar-categoria" onclick="adicionarCategoria()">Adicionar Categoria</button>
+      </div>
+      <div id="listaCategorias" class="lista"></div>
+    </div>
+
+    <div>
+      <h2>Gerenciar Produtos</h2>
+      <input type="text" id="inputProduto" class="input-field" placeholder="Nome do produto">
+      <input type="number" id="inputPreco" class="input-field" placeholder="Preço do produto">
+      <select id="selectCategoriaProduto" class="input-field"></select>
+      <button class="btn" onclick="adicionarProduto()">Adicionar Produto</button>
+
+      <div class="tabela-wrapper">
+        <table class="tabela-produtos">
+          <thead>
+            <tr>
+              <th>Produto</th>
+              <th>Preço</th>
+              <th>Categoria</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="listaProdutos"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      <h2>Editar Texto dos Botões</h2>
+      <input type="text" id="inputTextoBotao" class="input-field" placeholder="Texto do botão 'Meu Pedido'">
+      <button class="btn" onclick="salvarTextoBotao()">Salvar Texto</button>
+    </div>
+  </div>
+
+  <script>
+    const URL_BACKEND = "https://SEUSERVIDOR.awardspace.com/admin.php";
+
+    let dados = {};
+    let categorias = [];
+    let produtos = [];
+    let header = {};
+    let textoBotao = 'Meu Pedido';
+
+    fetch(URL_BACKEND)
+      .then(res => res.json())
+      .then(data => {
+        dados = data;
+        categorias = dados.categorias || [];
+        produtos = dados.produtos || [];
+        header = dados.header || {};
+        textoBotao = dados.textoBotao || 'Meu Pedido';
+
+        document.getElementById('inputNomeEsfiharia').value = header.nome || '';
+        document.getElementById('inputImagemHeader').value = header.imagem || '';
+        document.getElementById('inputTextoBotao').value = textoBotao || '';
+        atualizarCategorias();
+        atualizarProdutos();
+      });
+
+    function salvarDados() {
+      fetch(URL_BACKEND, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categorias, produtos, header, textoBotao })
+      }).then(res => res.json()).then(data => {
+        alert('Alterações salvas com sucesso!');
+      });
+    }
+
+    function atualizarCategorias() {
+      const lista = document.getElementById('listaCategorias');
+      const select = document.getElementById('selectCategoriaProduto');
+      lista.innerHTML = '';
+      select.innerHTML = '<option value="">Selecione uma categoria</option>';
+      categorias.forEach((cat, i) => {
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.innerHTML = `
+          <div>${cat}</div>
+          <div class="item-buttons">
+            <button class="btn remove" onclick="removerCategoria(${i})">Remover</button>
+          </div>`;
+        lista.appendChild(div);
+
+        const option = document.createElement('option');
+        option.value = cat;
+        option.textContent = cat;
+        select.appendChild(option);
+      });
+    }
+
+    function atualizarProdutos() {
+      const tbody = document.getElementById('listaProdutos');
+      tbody.innerHTML = '';
+      produtos.forEach((p, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${p.nome}</td>
+          <td>R$ ${parseFloat(p.preco).toFixed(2)}</td>
+          <td>${p.categoria}</td>
+          <td>
+            <button class="btn edit" onclick="editarProduto(${i})">Editar</button>
+            <button class="btn remove" onclick="removerProduto(${i})">Remover</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function adicionarCategoria() {
+      const input = document.getElementById('inputCategoria');
+      const valor = input.value.trim();
+      if (valor && !categorias.includes(valor)) {
+        categorias.push(valor);
+        input.value = '';
+        atualizarCategorias();
+        salvarDados();
+      }
+    }
+
+    function removerCategoria(i) {
+      const removida = categorias[i];
+      categorias.splice(i, 1);
+      produtos = produtos.filter(p => p.categoria !== removida);
+      atualizarCategorias();
+      atualizarProdutos();
+      salvarDados();
+    }
+
+    function adicionarProduto() {
+      const nome = document.getElementById('inputProduto').value.trim();
+      const preco = document.getElementById('inputPreco').value.trim();
+      const categoria = document.getElementById('selectCategoriaProduto').value;
+      if (nome && preco && categoria) {
+        produtos.push({ nome, preco, categoria });
+        document.getElementById('inputProduto').value = '';
+        document.getElementById('inputPreco').value = '';
+        atualizarProdutos();
+        salvarDados();
+      }
+    }
+
+    function removerProduto(i) {
+      produtos.splice(i, 1);
+      atualizarProdutos();
+      salvarDados();
+    }
+
+    function editarProduto(i) {
+      const p = produtos[i];
+      document.getElementById('inputProduto').value = p.nome;
+      document.getElementById('inputPreco').value = p.preco;
+      document.getElementById('selectCategoriaProduto').value = p.categoria;
+      removerProduto(i);
+    }
+
+    function salvarHeader() {
+      header.nome = document.getElementById('inputNomeEsfiharia').value.trim();
+      header.imagem = document.getElementById('inputImagemHeader').value.trim();
+      salvarDados();
+    }
+
+    function salvarTextoBotao() {
+      textoBotao = document.getElementById('inputTextoBotao').value.trim();
+      salvarDados();
+    }
+  </script>
+</body>
+</html>
